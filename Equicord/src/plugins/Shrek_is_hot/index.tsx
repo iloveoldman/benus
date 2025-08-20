@@ -1,90 +1,61 @@
-import { React } from "@webpack/common";
 import definePlugin from "@utils/types";
-import { ModalRoot, ModalSize, openModal } from "@utils/modal";
-import { findByPropsLazy } from "@webpack";
-
-const IMAGE_URL = "https://i.imgur.com/yRcAQn5.png";
-const AUDIO_URL =
-  "https://jumpshare.com/download/6OOYl1xsRPvpvuaPI9k2/shimmy-shimmy-yay-made-with-Voicemod.mp3";
-
+import { definePluginSettings } from "@api/Settings";
+import { OptionType } from "@utils/types";
+import { React } from "@webpack/common";
 import "./style.css";
 
-const ShrekButton = ({ onClick }: { onClick: () => void }) => {
-  const buttonRef = React.useRef<HTMLDivElement>(null);
+const SHREK_IMAGE_URL = "https://imgur.com/a/0Xhactf#BMcQLsf";
+const SHREK_AUDIO_URL = "https://jumpshare.com/s/6OOYl1xsRPvpvuaPI9k2.mp3";
 
-  const handleClick = () => {
-    if (buttonRef.current) {
-      buttonRef.current.classList.add("shrek-jiggle");
-      setTimeout(() => buttonRef.current?.classList.remove("shrek-jiggle"), 500);
-    }
-    onClick();
-  };
-
-  return (
-    <div
-      ref={buttonRef}
-      className="shrek-button"
-      onClick={handleClick}
-    >
-      <img src={IMAGE_URL} alt="Shrek" className="shrek-button-img" />
-      Shrek
-    </div>
-  );
-};
+const settings = definePluginSettings({
+  enabled: {
+    type: OptionType.BOOLEAN,
+    default: false,
+    description: "Toggle the Shrek button"
+  },
+  volume: {
+    type: OptionType.NUMBER,
+    default: 0.8,
+    description: "Playback volume (0.0–1.0)"
+  },
+  autoplayOnEnable: {
+    type: OptionType.BOOLEAN,
+    default: false,
+    description: "Auto-play the audio when enabling the plugin"
+  }
+});
 
 export default definePlugin({
   name: "ShrekButton",
-  description: "Adds a Shrek button that shows a modal with music.",
-  authors: [{ id: 676767676767, name: "[repo](<https://github.com/iloveoldman/Vencord-plugins>)" }],
-
-  start() {
-    const HeaderBar = findByPropsLazy("container", "children");
-    if (!HeaderBar) {
-      console.error("[ShrekButton] Could not find HeaderBar.");
-      return;
+  description: "Adds a Shrek button with image and audio.",
+  authors: [{ id: 0, name: "iloveoldman" }],
+  settings,
+  onEnable() {
+    if (settings.store.enabled && settings.store.autoplayOnEnable) {
+      const audio = new Audio(SHREK_AUDIO_URL);
+      audio.volume = settings.store.volume;
+      audio.play().catch(console.error);
     }
-
-    const orig = HeaderBar.default.prototype.render;
-    const plugin = this;
-
-    HeaderBar.default.prototype.render = function (...args: any[]) {
-      const res = orig.apply(this, args);
-
-      res.props.children.push(
-        <ShrekButton key="shrek-button" onClick={() => plugin.openShrekModal()} />
-      );
-
-      return res;
-    };
-
-    this.unpatch = () => {
-      HeaderBar.default.prototype.render = orig;
-    };
   },
-
-  stop() {
-    this.unpatch?.();
-  },
-
-  openShrekModal() {
-    openModal((props) => (
-      <ModalRoot {...props} size={ModalSize.MEDIUM}>
-        <div className="shrek-modal">
-          <img src={IMAGE_URL} alt="Shrek" className="shrek-modal-img" />
-          <audio
-            ref={(el) => {
-              if (el) {
-                el.loop = true;
-                el.volume = 0.8;
-                el.currentTime = 0;
-                el.play().catch(() => {});
-              }
-            }}
-            style={{ display: "none" }}
-            src={AUDIO_URL}
-          />
-        </div>
-      </ModalRoot>
-    ));
-  },
+  renderSettings() {
+    return React.createElement("div", { className: "shrek-plugin-settings" },
+      React.createElement("img", { src: SHREK_IMAGE_URL, className: "shrek-image", alt: "Shrek" }),
+      React.createElement("p", null, "Toggle the Shrek button and adjust volume."),
+      React.createElement("input", {
+        type: "range",
+        min: 0,
+        max: 1,
+        step: 0.01,
+        value: settings.store.volume,
+        onChange: (e: any) => settings.store.volume = parseFloat(e.target.value)
+      }),
+      React.createElement("button", {
+        onClick: () => {
+          const audio = new Audio(SHREK_AUDIO_URL);
+          audio.volume = settings.store.volume;
+          audio.play().catch(console.error);
+        }
+      }, "Play Shrek")
+    );
+  }
 });
